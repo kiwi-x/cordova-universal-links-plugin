@@ -52,7 +52,7 @@ function readPreferences(cordovaContext) {
 
 function getTeamIdPreference(xmlPreferences) {
   // if (xmlPreferences.hasOwnProperty('ios-team-id')) {
-  if ('ios-team-id' in xmlPreferences)
+  if ('ios-team-id' in xmlPreferences) {
     return xmlPreferences['ios-team-id'][0]['$']['value'];
   }
 
