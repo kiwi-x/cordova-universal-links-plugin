@@ -8,6 +8,11 @@ Which is:
 
 var path = require('path');
 var compare = require('node-version-compare');
+const glob = require('glob');
+const xcode = require('xcode');
+const fileSystem = require('fs');
+const shelljs = require('shelljs');
+
 var ConfigXmlHelper = require('../configXmlHelper.js');
 var IOS_DEPLOYMENT_TARGET = '8.0';
 var COMMENT_KEY = /_comment$/;
@@ -51,6 +56,8 @@ function enableAssociativeDomainsCapability(cordovaContext) {
  * @param {Object} xcodeProject - xcode project preferences; all changes are made in that instance
  */
 function activateAssociativeDomains(xcodeProject) {
+
+
   var configurations = nonComments(xcodeProject.pbxXCBuildConfigurationSection());
   var entitlementsFilePath = pathToEntitlementsFile();
   var config;
@@ -132,25 +139,69 @@ function isPbxReferenceAlreadySet(fileReferenceSection, entitlementsRelativeFile
  *
  * @return {Object} projectFile - project file information
  */
+
 function loadProjectFile() {
-  var platform_ios;
-  var projectFile;
+  // taken from
+  // https://github.com/e-imaxina/cordova-plugin-deeplinks/blob/2fd6dba5efd6d2087a9f73b4744d4cc3e17b9707/hooks/lib/ios/xcodePreferences.js
+  
+  let platform_ios;
+  let projectFile;
 
   try {
     // try pre-5.0 cordova structure
-    platform_ios = context.requireCordovaModule('cordova-lib/src/plugman/platforms')['ios'];
+    platform_ios = context.requireCordovaModule(
+      'cordova-lib/src/plugman/platforms',
+    ).ios;
+
     projectFile = platform_ios.parseProjectFile(iosPlatformPath());
   } catch (e) {
-    // let's try cordova 5.0 structure
     try {
-      platform_ios = context.requireCordovaModule('cordova-lib/src/plugman/platforms/ios');
+      // let's try cordova 5.0 structure
+      platform_ios = context.requireCordovaModule('ios');
       projectFile = platform_ios.parseProjectFile(iosPlatformPath());
-    } catch(e) {
-      // try cordova 7.0 structure
-      var iosPlatformApi = require(path.join(iosPlatformPath(), '/cordova/Api'));
-      var projectFileApi = require(path.join(iosPlatformPath(), '/cordova/lib/projectFile.js'));
-      var locations = (new iosPlatformApi()).locations;
-      projectFile = projectFileApi.parse(locations);      
+    } catch (e) {
+      // Then cordova 7.0
+      const project_files = glob.sync(
+        path.join(iosPlatformPath(), '*.xcodeproj', 'project.pbxproj'),
+      );
+
+      if (project_files.length === 0) {
+        throw new Error(
+          'does not appear to be an xcode project (no xcode project file)',
+        );
+      }
+
+      const pbxPath = project_files[0];
+
+      const xcodeproj = xcode.project(pbxPath);
+      xcodeproj.parseSync();
+
+      projectFile = {
+        xcode: xcodeproj,
+        write() {
+          const fs = fileSystem;
+
+          const frameworks_file = path.join(
+            iosPlatformPath(),
+            'frameworks.json',
+          );
+          let frameworks = {};
+          try {
+            frameworks = context.requireCordovaModule(frameworks_file);
+          } catch (e) {}
+
+          fs.writeFileSync(pbxPath, xcodeproj.writeSync());
+          if (Object.keys(frameworks).length === 0) {
+            // If there is no framework references remain in the project, just remove this file
+            shelljs.rm('-rf', frameworks_file);
+            return;
+          }
+          fs.writeFileSync(
+            frameworks_file,
+            JSON.stringify(this.frameworks, null, 4),
+          );
+        },
+      };
     }
   }
 
