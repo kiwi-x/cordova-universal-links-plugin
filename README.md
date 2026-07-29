@@ -3,6 +3,8 @@ This Cordova plugin adds support for opening an application from the browser whe
 - [Universal Links on iOS](https://developer.apple.com/library/ios/documentation/General/Conceptual/AppSearch/UniversalLinks.html)
 - [Deep Linking on Android](https://developer.android.com/training/app-indexing/deep-linking.html)
 
+This is a fork from [walteram/cordova-universal-links-plugin](https://github.com/walteram/cordova-universal-links-plugin) with some fixes t work with xcode26, cordova android 15 and cordova ios 8
+
 Basically, you can have a single link that will either open your app or your website, if the app isn't installed.
 
 Integration process is simple:

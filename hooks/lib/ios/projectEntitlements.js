@@ -6,20 +6,20 @@ Location: ProjectName/
 Script only generates content. File it self is included in the xcode project in another hook: xcodePreferences.js.
 */
 
-var path = require('path');
-var fs = require('fs');
-var plist = require('plist');
-var mkpath = require('mkpath');
-var ConfigXmlHelper = require('../configXmlHelper.js');
-var ASSOCIATED_DOMAINS = 'com.apple.developer.associated-domains';
-var context;
-var projectRoot;
-var projectName;
-var entitlementsFilePath;
+var path = require('path')
+var fs = require('fs')
+var plist = require('plist')
+var mkpath = require('mkpath')
+var ConfigXmlHelper = require('../configXmlHelper.js')
+var ASSOCIATED_DOMAINS = 'com.apple.developer.associated-domains'
+var context
+var projectRoot
+var projectName
+var entitlementsFilePath
 
 module.exports = {
-  generateAssociatedDomainsEntitlements: generateEntitlements
-};
+  generateAssociatedDomainsEntitlements: generateEntitlements,
+}
 
 // region Public API
 
@@ -30,12 +30,15 @@ module.exports = {
  * @param {Object} pluginPreferences - plugin preferences from config.xml; already parsed
  */
 function generateEntitlements(cordovaContext, pluginPreferences) {
-  context = cordovaContext;
+  context = cordovaContext
 
-  var currentEntitlements = getEntitlementsFileContent();
-  var newEntitlements = injectPreferences(currentEntitlements, pluginPreferences);
+  var currentEntitlements = getEntitlementsFileContent()
+  var newEntitlements = injectPreferences(
+    currentEntitlements,
+    pluginPreferences,
+  )
 
-  saveContentToEntitlementsFile(newEntitlements);
+  saveContentToEntitlementsFile(newEntitlements)
 }
 
 // endregion
@@ -48,14 +51,14 @@ function generateEntitlements(cordovaContext, pluginPreferences) {
  * @param {Object} content - data to save; JSON object that will be transformed into xml
  */
 function saveContentToEntitlementsFile(content) {
-  var plistContent = plist.build(content);
-  var filePath = pathToEntitlementsFile();
+  var plistContent = plist.build(content)
+  var filePath = pathToEntitlementsFile()
 
   // ensure that file exists
-  mkpath.sync(path.dirname(filePath));
+  mkpath.sync(path.dirname(filePath))
 
   // save it's content
-  fs.writeFileSync(filePath, plistContent, 'utf8');
+  fs.writeFileSync(filePath, plistContent, 'utf8')
 }
 
 /**
@@ -64,16 +67,16 @@ function saveContentToEntitlementsFile(content) {
  * @return {String} entitlements file content
  */
 function getEntitlementsFileContent() {
-  var pathToFile = pathToEntitlementsFile();
-  var content;
+  var pathToFile = pathToEntitlementsFile()
+  var content
 
   try {
-    content = fs.readFileSync(pathToFile, 'utf8');
+    content = fs.readFileSync(pathToFile, 'utf8')
   } catch (err) {
-    return defaultEntitlementsFile();
+    return defaultEntitlementsFile()
   }
 
-  return plist.parse(content);
+  return plist.parse(content)
 }
 
 /**
@@ -82,7 +85,7 @@ function getEntitlementsFileContent() {
  * @return {String} default entitlements file content
  */
 function defaultEntitlementsFile() {
-  return {};
+  return {}
 }
 
 /**
@@ -93,12 +96,12 @@ function defaultEntitlementsFile() {
  * @return {Object} new entitlements content
  */
 function injectPreferences(currentEntitlements, pluginPreferences) {
-  var newEntitlements = currentEntitlements;
-  var content = generateAssociatedDomainsContent(pluginPreferences);
+  var newEntitlements = currentEntitlements
+  var content = generateAssociatedDomainsContent(pluginPreferences)
 
-  newEntitlements[ASSOCIATED_DOMAINS] = content;
+  newEntitlements[ASSOCIATED_DOMAINS] = content
 
-  return newEntitlements;
+  return newEntitlements
 }
 
 /**
@@ -108,17 +111,17 @@ function injectPreferences(currentEntitlements, pluginPreferences) {
  * @return {Object} associated-domains dictionary content
  */
 function generateAssociatedDomainsContent(pluginPreferences) {
-  var domainsList = [];
+  var domainsList = []
 
   // generate list of host links
-  pluginPreferences.hosts.forEach(function(host) {
-    var link = domainsListEntryForHost(host);
+  pluginPreferences.hosts.forEach(function (host) {
+    var link = domainsListEntryForHost(host)
     if (domainsList.indexOf(link) == -1) {
-      domainsList.push(link);
+      domainsList.push(link)
     }
-  });
+  })
 
-  return domainsList;
+  return domainsList
 }
 
 /**
@@ -128,7 +131,7 @@ function generateAssociatedDomainsContent(pluginPreferences) {
  * @return {String} record
  */
 function domainsListEntryForHost(host) {
-  return 'applinks:' + host.name;
+  return 'applinks:' + host.name
 }
 
 // endregion
@@ -142,10 +145,41 @@ function domainsListEntryForHost(host) {
  */
 function pathToEntitlementsFile() {
   if (entitlementsFilePath === undefined) {
-    entitlementsFilePath = path.join(getProjectRoot(), 'platforms', 'ios', getProjectName(), 'Resources', getProjectName() + '.entitlements');
+    var iosVersion = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          getProjectRoot(),
+          'node_modules',
+          'cordova-ios',
+          'package.json',
+        ),
+        'utf8',
+      ),
+    ).version
+    var major = parseInt(iosVersion.split('.')[0], 10)
+
+    if (major >= 8) {
+      entitlementsFilePath = path.join(
+        getProjectRoot(),
+        'platforms',
+        'ios',
+        'App',
+        'Resources',
+        'App.entitlements',
+      )
+    } else {
+      entitlementsFilePath = path.join(
+        getProjectRoot(),
+        'platforms',
+        'ios',
+        getProjectName(),
+        'Resources',
+        getProjectName() + '.entitlements',
+      )
+    }
   }
 
-  return entitlementsFilePath;
+  return entitlementsFilePath
 }
 
 /**
@@ -154,7 +188,7 @@ function pathToEntitlementsFile() {
  * @return {String} absolute path to the projects root
  */
 function getProjectRoot() {
-  return context.opts.projectRoot;
+  return context.opts.projectRoot
 }
 
 /**
@@ -164,11 +198,11 @@ function getProjectRoot() {
  */
 function getProjectName() {
   if (projectName === undefined) {
-    var configXmlHelper = new ConfigXmlHelper(context);
-    projectName = configXmlHelper.getProjectName();
+    var configXmlHelper = new ConfigXmlHelper(context)
+    projectName = configXmlHelper.getProjectName()
   }
 
-  return projectName;
+  return projectName
 }
 
 // endregion
