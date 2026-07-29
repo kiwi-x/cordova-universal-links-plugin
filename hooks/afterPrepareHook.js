@@ -24,7 +24,6 @@ module.exports = function(ctx) {
  * @param {Object} cordovaContext - cordova context object
  */
 function run(cordovaContext) {
-  console.log("RUN");
   var pluginPreferences = configParser.readPreferences(cordovaContext);
   var platformsList = cordovaContext.opts.platforms;
 
@@ -43,13 +42,11 @@ function run(cordovaContext) {
     switch (platform) {
       case ANDROID:
         {
-          console.log("ANDROID");
           activateUniversalLinksInAndroid(cordovaContext, pluginPreferences);
           break;
         }
       case IOS:
         {
-          console.log("IOS");
           activateUniversalLinksInIos(cordovaContext, pluginPreferences);
           break;
         }
